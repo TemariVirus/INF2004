@@ -10,7 +10,6 @@
 | **Defects planted** | **7** — 5 in `frame.c`, 2 in `bughunt2_pico.c` |
 | **Runs on** | Laptop finds 5 of 7. The other 2 need two real Picos. |
 | **Time** | ~60 minutes |
-| **You must hand in** | `LOGBOOK.md` |
 
 ---
 
@@ -244,7 +243,7 @@ Use `uint8_t` for bytes. Always.
 
 ---
 
-## Hand in
+## Hints
 
 `LOGBOOK.md`, at least **seven** defect rows plus your hypothesis trail. In the
 reflection section, answer this one specifically:
