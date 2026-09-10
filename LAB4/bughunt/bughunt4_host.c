@@ -24,6 +24,15 @@ static void check(const char *what, long got, long expect)
            what, got, expect, ok ? "ok" : "FAIL");
 }
 
+static void check_near(const char *what, uint32_t got, uint32_t target)
+{
+    long error = (long)got - (long)target;
+    int ok = error >= -15 && error <= 15;
+    printf("  %-30s got %lu target %lu (+/-15) %s\n", what,
+           (unsigned long)got, (unsigned long)target, ok ? "ok" : "FAIL");
+    if (!ok) failures++;
+}
+
 int main(void)
 {
     printf("BUG HUNT #4 - signal chain\n\n");
@@ -51,8 +60,11 @@ int main(void)
      * ---------------------------------------------------------------- */
     printf("\nstep response - rising 0 -> 3000\n  ");
     iir_reset();
+    uint32_t previous = 0;
     for (int i = 0; i < 60; i++) {
         uint32_t v = iir_step(0, 3000);
+        if (v < previous || v > 3000) failures++;
+        previous = v;
         if (i % 6 == 0) printf("%6u ", v);
     }
     printf("\n  (should climb smoothly and settle near 3000)\n");
@@ -60,6 +72,8 @@ int main(void)
     printf("\nstep response - falling 3000 -> 500\n  ");
     for (int i = 0; i < 60; i++) {
         uint32_t v = iir_step(0, 500);
+        if (v > previous || v < 500) failures++;
+        previous = v;
         if (i % 6 == 0) printf("%6u ", v);
     }
     printf("\n  (should fall smoothly and settle near 500)\n");
@@ -83,8 +97,8 @@ int main(void)
         b = iir_step(1, 2000);
     }
     printf("  channel 0 fed a constant 1000, channel 1 fed a constant 2000\n");
-    check("channel 0 settles at", a, 1000);
-    check("channel 1 settles at", b, 2000);
+    check_near("channel 0 settles near", a, 1000);
+    check_near("channel 1 settles near", b, 2000);
 
     printf("\n%s  (%d failure%s)\n",
            failures ? "HUNT INCOMPLETE" : "SIGNAL CHAIN MATCHES THE SPECIFICATION",

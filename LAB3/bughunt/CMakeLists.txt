@@ -38,7 +38,7 @@ target_compile_options(bughunt3 PRIVATE -Wall -Wextra -Wno-unused-parameter)
 # Bug Hunt #3 requires you to compare optimisation levels.
 # Configure the build twice:
 #
-#   cmake -DPICO_BOARD=pico_w -DCMAKE_BUILD_TYPE=Debug   ..   # -O0
+#   cmake -DPICO_BOARD=pico_w -DCMAKE_BUILD_TYPE=Debug -DPICO_DEOPTIMIZED_DEBUG=1 .. # -O0
 #   cmake -DPICO_BOARD=pico_w -DCMAKE_BUILD_TYPE=Release ..   # -O3
 #
 # ...into two SEPARATE build directories, and keep both .uf2 files.

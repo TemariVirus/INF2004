@@ -32,6 +32,8 @@ static uint64_t last_edge_us     = 0;   /* wall clock of the last edge */
 static uint32_t last_debounce_us = 0;   /* 32-bit timer, for debounce  */
 static uint32_t slot_start_us    = 0;
 static uint32_t slot_width_us    = 0;
+static uint32_t previous_start_us = 0;
+static uint32_t slot_period_us    = 0;
 
 typedef enum {
     ENC_IDLE,
@@ -54,6 +56,9 @@ void encoder_isr(uint gpio, uint32_t events)
 
         switch (state) {
             case ENC_IDLE:
+                if (previous_start_us != 0)
+                    slot_period_us = now - previous_start_us;
+                previous_start_us = now;
                 slot_start_us = now;
                 state = ENC_SLOT;
 
@@ -70,12 +75,13 @@ void encoder_isr(uint gpio, uint32_t events)
 }
 
 /* ------------------------------------------------------------------
- * Speed in revolutions per minute, from the most recent slot width.
+ * Speed uses the interval between slot starts, including the gap.
+ * A slot's pulse width alone does not determine revolutions per minute.
  * ------------------------------------------------------------------ */
-static uint32_t rpm_from_width(uint32_t width_us)
+static uint32_t rpm_from_period(uint32_t period_us)
 {
-    if (width_us == 0) return 0;
-    return 60000000u / (width_us * SLOTS_PER_REV);
+    if (period_us == 0) return 0;
+    return (uint32_t)(60000000ull / ((uint64_t)period_us * SLOTS_PER_REV));
 }
 
 int main(void)
@@ -102,7 +108,7 @@ int main(void)
     printf("\ndone.\n");
     printf("  slots counted : %lu\n",     (unsigned long)pulse_count);
     printf("  last width    : %lu us\n",  (unsigned long)slot_width_us);
-    printf("  speed         : %lu rpm\n", (unsigned long)rpm_from_width(slot_width_us));
+    printf("  speed         : %lu rpm\n", (unsigned long)rpm_from_period(slot_period_us));
     printf("  last edge at  : %u us since boot\n", finished_at);
 
     while (true)

@@ -86,9 +86,29 @@ int main(void)
         if (frame_decode(buf, n, &out))
             compare_readings(&out, &t->r);
         else
-            printf("      (round trip rejected - expected, until encode is fixed)\n");
+            fail("round trip rejected");
 
         printf("\n");
+    }
+
+    /* Malformed frames are checked after encoding works, so the broken
+     * decoder cannot crash before students see the initial byte diffs. */
+    if (failures == 0) {
+        uint8_t bad[203] = { FRAME_SOF, 200 };
+        reading_t out;
+        puts("--- malformed frames (must all be rejected) ---");
+        if (frame_decode(bad, sizeof bad, &out)) fail("oversized payload accepted");
+        const uint8_t short_frame[] = { FRAME_SOF, FRAME_PAYLOAD, 0 };
+        if (frame_decode(short_frame, sizeof short_frame, &out)) fail("truncated frame accepted");
+        const uint8_t empty[] = { FRAME_SOF, 0, 0 };
+        if (frame_decode(empty, sizeof empty, &out)) fail("empty payload accepted");
+        uint8_t corrupt[12];
+        memcpy(corrupt, vectors[0].golden, sizeof corrupt);
+        corrupt[11] ^= 1;
+        if (frame_decode(corrupt, sizeof corrupt, &out)) fail("bad checksum accepted");
+        memcpy(corrupt, vectors[0].golden, sizeof corrupt);
+        corrupt[0] = 0;
+        if (frame_decode(corrupt, sizeof corrupt, &out)) fail("bad start byte accepted");
     }
 
     printf("%s  (%d failure%s)\n",

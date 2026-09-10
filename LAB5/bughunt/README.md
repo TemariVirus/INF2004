@@ -7,10 +7,10 @@
 | | |
 |---|---|
 | **Algorithm** | Ring buffer and moving average, under concurrency |
-| **Defects planted** | **9** — 8 in `bughunt5.c`, 1 in `FreeRTOSConfig.h` |
+| **Investigation areas** | **9** — 8 in `bughunt5.c`, 1 in `FreeRTOSConfig.h`; stack exhaustion is build-dependent |
 | **Runs on** | Pico W + FreeRTOS-Kernel (the one you set up earlier this lab) |
 | **Time** | 90 minutes |
-| **You must hand in** | `LOGBOOK.md` and the stack high-water table |
+| **Optional practice notes** | `LOGBOOK.md` and the stack high-water table |
 
 ---
 
@@ -49,22 +49,25 @@ configUSE_MALLOC_FAILED_HOOK
 vTaskList()
 ```
 
-Two of them will point almost directly at defects. One of them will tell you
-something alarming about a task you had not suspected. Print a table of every
+These instruments can expose precondition failures and inadequate stack margins.
+Print a table of every
 task's stack high-water mark once a second and keep it on screen while you work —
-you are handing that table in.
+use that table to justify any change in stack allocation. Do not assume an
+overflow must occur on your SDK or formatting library.
 
 > `configASSERT` is not a debugging luxury. It is the kernel's contract with you:
-> every API function checks its preconditions through it, and with the macro
-> empty, **every one of those checks is compiled away**. Shipping firmware turns
-> it off. Firmware under development never should.
+> kernel checks written with this macro disappear when it is empty. Enable it
+> during development. Whether to retain assertions in production is a separate
+> design decision; disabling them is not itself C undefined behaviour.
 
 ---
 
 ## What you should expect
 
-The program runs. Output appears. Numbers look plausible. That is the entire
-difficulty of this hunt: **nothing announces itself.**
+The program may initially show no temperature readings: a message larger than
+the receiver's buffer stays queued, so repeated receives return zero. Compare
+the send size and receive capacity first. After that is repaired, later defects
+can produce plausible but wrong numbers. Their frequency depends on the build.
 
 Things worth being suspicious about, in no particular order and with no promise
 that each maps to exactly one defect:
@@ -102,7 +105,7 @@ search space.
 
 Several of these defects can be made to *stop happening* without being fixed:
 
-- Give the print task a bigger stack, and the corruption moves somewhere else.
+- Give a task more stack without checking whether stack exhaustion caused the fault.
 - Slow the sensor task down, and the race gets rarer.
 - Make the queue longer, and the drops get less frequent.
 
@@ -113,7 +116,7 @@ Say *why* the resource was too small, or find the real defect.
 
 ---
 
-## Hand in
+## Reflect on your attempt
 
 - `LOGBOOK.md`, at least **nine** defect rows plus your hypothesis trail.
 - A stack high-water-mark table for all four tasks, before and after your fixes.
@@ -122,3 +125,8 @@ Say *why* the resource was too small, or find the real defect.
 > Pick the defect you would have been least likely to find by reading the source
 > code alone. What instrument found it, and what would have happened if this
 > firmware had shipped without anyone finding it?
+
+## After your attempt
+
+This is ungraded practice; the logbook and reflection prompts are optional.
+Compare your reasoning with the separate [answer guide and corrected source](../../answers/bughunt5/README.md).

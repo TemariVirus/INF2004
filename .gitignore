@@ -6,6 +6,10 @@ _instructor/
 build/
 build-debug/
 build-release/
+build-answers*/
+build-answer*-pico/
+# Local SDK import copied during Pico project setup
+pico_sdk_import.cmake
 *.uf2
 *.elf
 *.bin

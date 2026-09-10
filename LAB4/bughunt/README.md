@@ -11,7 +11,7 @@
 | **Defects planted** | **8** — 5 in `algo.c`, 3 in `bughunt4.c` |
 | **Runs on** | Laptop finds 5 in one second. The other 3 need the Pico. |
 | **Time** | 60–75 minutes |
-| **You must hand in** | `LOGBOOK.md` and one plotted step response |
+| **Optional practice notes** | `LOGBOOK.md` and one plotted step response |
 
 ---
 
@@ -47,8 +47,8 @@ paper. A **step** is the best one:
 input:    0 0 0 0 3000 3000 3000 3000 3000 3000 ...
 ```
 
-A first-order filter with α = 1/16 fed a step must rise smoothly and settle on
-the target. That is not an opinion — it is what the maths says, and you can
+A first-order filter with α = 1/16 fed a step must rise smoothly toward
+the target. With integer updates, it can settle up to 15 ADC counts away. You can
 sketch the curve before you run anything. Then feed it a step *downward* and
 demand the mirror image.
 
@@ -71,7 +71,7 @@ specific.** Work out what is different about the falling case, arithmetically,
 and you have the defect. Do the subtraction by hand in 32-bit unsigned, on
 paper, for `x = 500` and `y = 3000`.
 
-For your hand-in, plot both step responses (a spreadsheet is fine) before and
+For your practice notes, plot both step responses (a spreadsheet is fine) before and
 after your fix. A picture of a filter that cannot come down is worth more than a
 paragraph describing one.
 
@@ -97,7 +97,9 @@ Three defects remain. What you should expect if you look carefully:
 
 And one thing the harness cannot check for you: **measure the actual frequency
 of the PWM on GP0.** Do not trust the `#define`. Use the lab's own ADC sampling
-exercise, or a second Pico, or a scope. It is close to 20 Hz. It is not 20 Hz.
+exercise, or a second Pico, or a scope. The broken arithmetic gives about
+19.9992 Hz; once corrected it gives 20 Hz at the specified clock. Resolving
+this difference needs an accurate instrument; use the host test as the primary check.
 Work out from the RP2040 datasheet how many counter ticks a PWM period actually
 takes, and compare that with what `pwm_wrap_for_hz()` returns.
 
@@ -107,7 +109,7 @@ takes, and compare that with what `pwm_wrap_for_hz()` returns.
 
 ---
 
-## Hand in
+## Reflect on your attempt
 
 - `LOGBOOK.md`, at least **eight** defect rows plus your hypothesis trail.
 - A plot of the rising and falling step response, before and after.
@@ -117,3 +119,8 @@ takes, and compare that with what `pwm_wrap_for_hz()` returns.
 > unsigned subtraction) share a single underlying cause. Name it in one sentence,
 > and describe a habit — not a fix, a *habit* — that would have prevented all
 > three.
+
+## After your attempt
+
+This is ungraded practice; the logbook and reflection prompts are optional.
+Compare your reasoning with the separate [answer guide and corrected source](../../answers/bughunt4/README.md).

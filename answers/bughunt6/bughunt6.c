@@ -21,14 +21,11 @@
  *       Frame layout:  [0xA5][len][payload...][crc8 over payload]
  *       Payload:       [0..3] timestamp, big-endian
  *                      [4..5] value, big-endian
- *       len must be exactly 6; reject truncated or differently sized frames.
  *
  *   format_reading(v)
  *       Returns a printable string for a reading.
  *
- * TWELVE defects are planted. Then, when you are done, there is pid.c.
- *
- * There are no hints in this file and none in the brief.
+ * Corrected reference: see README.md for the twelve fixes.
  */
 
 #include <stdio.h>
@@ -39,15 +36,18 @@
 
 #ifdef PICO_ON_DEVICE
 #include "pico/stdlib.h"
+#else
+#include <time.h>
+#include <errno.h>
 #endif
 
 #define FRAME_SOF   0xA5u
 #define POLY        0x07u
 #define LFSR_SEED   0xACE1u
-#define LFSR_TAPS   0xB000u
+#define LFSR_TAPS   0xB400u
 
 /* ------------------------------------------------------------------ */
-static uint8_t  crc_table[255];
+static uint8_t  crc_table[256];
 static uint16_t lfsr_state = LFSR_SEED;
 static bool     crc_ready  = false;
 
@@ -64,7 +64,8 @@ void crc_init(void)
 
 uint8_t crc8(const uint8_t *data, uint8_t len)
 {
-    uint8_t crc;
+    if (!crc_ready) crc_init();
+    uint8_t crc = 0;
 
     for (uint8_t i = 0; i < len; i++)
         crc = crc_table[crc ^ data[i]];
@@ -90,7 +91,7 @@ uint32_t lfsr_period(void)
     do {
         lfsr_next();
         n++;
-    } while (lfsr_state != start && n < 200);
+    } while (lfsr_state != start && n < 65536);
 
     return n;
 }
@@ -103,7 +104,8 @@ typedef struct {
 
 uint32_t parse_ts(const uint8_t *frame)
 {
-    return *(uint32_t *)&frame[2];
+    return ((uint32_t)frame[2] << 24) | ((uint32_t)frame[3] << 16)
+        | ((uint32_t)frame[4] << 8) | frame[5];
 }
 
 bool parse_frame(const uint8_t *frame, uint8_t frame_len, reading_t *out)
@@ -112,6 +114,7 @@ bool parse_frame(const uint8_t *frame, uint8_t frame_len, reading_t *out)
     if (frame[0] != FRAME_SOF) return false;
 
     uint8_t len = frame[1];
+    if (len != 6 || frame_len != len + 3u) return false;
 
     if (crc8(&frame[2], len) != frame[2 + len])
         return false;
@@ -125,7 +128,7 @@ bool parse_frame(const uint8_t *frame, uint8_t frame_len, reading_t *out)
 /* ------------------------------------------------------------------ */
 char *format_reading(const reading_t *r)
 {
-    char buf[32];
+    static char buf[32];
     snprintf(buf, sizeof buf, "t=%lu v=%u",
              (unsigned long)r->timestamp, r->value);
     return buf;
@@ -133,7 +136,8 @@ char *format_reading(const reading_t *r)
 
 char *label_for(const char *name)
 {
-    char *out = malloc(strlen(name));
+    char *out = malloc(strlen(name) + 1);
+    if (!out) return NULL;
     strcpy(out, name);
     return out;
 }
@@ -144,14 +148,18 @@ char *label_for(const char *name)
  * ------------------------------------------------------------------ */
 void calibration_delay(void)
 {
-    for (uint32_t i = 0; i < 6000; i++)
-        ;
+#ifdef PICO_ON_DEVICE
+    sleep_us(500);
+#else
+    struct timespec delay = { .tv_sec = 0, .tv_nsec = 500000 };
+    while (nanosleep(&delay, &delay) != 0 && errno == EINTR) {}
+#endif
 }
 
 /* ------------------------------------------------------------------
  * Wait for the acquisition ISR to signal that a conversion finished.
  * ------------------------------------------------------------------ */
-static bool conversion_done = false;
+static volatile bool conversion_done = false;
 
 void acquisition_isr(void)
 {
@@ -171,7 +179,7 @@ void wait_for_conversion(void)
 uint32_t checksum_all(const uint8_t *data, uint16_t len)
 {
     uint32_t sum = 0;
-    for (uint8_t i = 0; i < len; i++)
+    for (uint16_t i = 0; i < len; i++)
         sum += data[i];
     return sum;
 }

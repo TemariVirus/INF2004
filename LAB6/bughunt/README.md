@@ -9,7 +9,7 @@
 | **Defects planted** | **12** — then `../pid.c`, which has at least 10 more |
 | **Runs on** | Laptop and Pico. Some defects exist on only one of them. |
 | **Time** | 90 minutes, plus `pid.c` |
-| **You must hand in** | `LOGBOOK.md`, a watchpoint transcript, a fault report |
+| **Optional practice notes** | `LOGBOOK.md`, a watchpoint transcript, a fault report |
 
 ---
 
@@ -22,29 +22,30 @@ gcc -Wall -Wextra -O0 -o bughunt6_host bughunt6_host.c bughunt6.c && ./bughunt6_
 ```
 
 Then build it again at `-O2`. Then at `-O3`. Then on the Pico, at `Debug` and at
-`Release`. **Five builds of identical source, five different behaviours.** Record
-all five in your logbook before you form a single hypothesis.
+`Release`. Record the five outcomes; they need not all differ. For a Pico `-O0`
+build add `-DPICO_DEOPTIMIZED_DEBUG=1`, because Debug normally uses `-Og`.
+For source-level Release disassembly, also pass
+`-DCMAKE_C_FLAGS_RELEASE="-O3 -g -DNDEBUG"`.
 
 ---
 
-## Three required exercises
+## Three debugging exercises
 
-These are not optional and they are what you are marked on. Each one teaches an
-instrument you have not used yet, and each one is the *only* practical way to
-find at least one of the twelve.
+These are ungraded practice. Try each instrument and record what you observe.
+Several defects can also be found by reading, warnings or sanitizers.
 
 ### A. Find a corruption with a data watchpoint
 
-Somewhere in this program, one variable's value changes without any line of code
-appearing to assign to it. You will not find this by reading, and you will not
-find it with `printf` — by the time you print the variable, the damage is long
-done and the culprit has moved on.
+Somewhere this program writes beyond an array. Locate the suspect array using
+warnings or a sanitizer, then catch the write in a Pico Debug build. The address
+after an array might be padding, not another named variable; inspect the map
+rather than assuming that declarations are adjacent in memory.
 
 Set a **data watchpoint** (a hardware breakpoint on *write access to an address*,
 not on a line of code):
 
 ```
-(gdb) watch <the variable>
+(gdb) watch -l *(unsigned char *)<suspect_address>
 (gdb) continue
 ```
 
@@ -52,7 +53,7 @@ The Cortex-M0+ has a small number of these in silicon. The debugger will stop th
 processor at the exact instruction that performed the write, and you can then
 look at the call stack to see who did it.
 
-**Hand in the transcript**: the watchpoint firing, the old and new values, and
+**Save a transcript**: the watchpoint firing, the old and new values, and
 the line of code that turned out to be responsible.
 
 > This is the single highest-value debugging technique on this course. An entire
@@ -61,7 +62,8 @@ the line of code that turned out to be responsible.
 
 ### B. Decode a HardFault
 
-One of the defects will fault the processor. When it does, **do not press reset**.
+One defect can fault the processor on an unaligned word load. If earlier defects
+prevent reaching it, fix those and repeat. When it faults, **do not press reset**.
 A HardFault is not a crash to be recovered from; it is a report, and the
 processor has already written it down for you.
 
@@ -81,12 +83,12 @@ The answer is in the ARMv6-M Architecture Reference Manual, and it is a property
 of the Cortex-M0+ that the Cortex-M4 in many other boards does not share. This is
 why "it worked on the other dev board" is not evidence of anything.
 
-**Hand in the fault report**: faulting address, instruction, C line, and cause.
+**Save a fault report**: faulting address, instruction, C line, and cause.
 
 ### C. Prove an optimisation defect from the disassembly
 
-At least two defects are invisible at `-O0` and fatal at `-O3`. For **one** of
-them:
+Compare the delay and acquisition-wait functions at `-O0` and `-O3`. Their
+symptoms depend on optimization. For **one** of them:
 
 ```bash
 arm-none-eabi-objdump -d build-debug/bughunt6.elf   > debug.asm
@@ -103,7 +105,7 @@ you failed to tell the compiler a fact it had no way to discover.** The compiler
 is not your adversary. It is a very literal reader of a contract you did not read
 as carefully as it did.
 
-**Hand in the disassembly extracts**, annotated.
+**Save the disassembly extracts**, annotated.
 
 ---
 
@@ -122,7 +124,7 @@ speed *is* the thing this whole ladder was built to give you.
 
 ---
 
-## Hand in
+## Reflect on your attempt
 
 - `LOGBOOK.md`, at least **twelve** defect rows plus `pid.c`, plus your
   hypothesis trail — including the wrong hypotheses.
@@ -138,3 +140,8 @@ speed *is* the thing this whole ladder was built to give you.
 > 2. Six hunts ago you were fixing a missing semicolon. Describe one thing you now
 >    do automatically that you did not do in week one — a habit, a flag, a check,
 >    a reflex — and name the defect that taught it to you.
+
+## After your attempt
+
+This is ungraded practice; the logbook and reflection prompts are optional.
+Compare your reasoning with the separate [answer guide and corrected source](../../answers/bughunt6/README.md).

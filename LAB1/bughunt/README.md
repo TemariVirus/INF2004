@@ -11,7 +11,7 @@
 | **Defects planted** | **6** — 3 syntax, 2 logical, 1 undefined behaviour |
 | **Runs on** | Your laptop *and* the Pico. Start on the laptop. |
 | **Time** | ~45 minutes |
-| **You must hand in** | `LOGBOOK.md` |
+| **Optional practice notes** | `LOGBOOK.md` |
 
 ---
 
@@ -143,8 +143,8 @@ zero. Ask yourself: for the specific argument being passed, **does `value` ever
 actually reach zero?**
 
 Pay attention to the *type* of `value`, and to what `>>` does to a negative
-number. The C standard calls this an *arithmetic shift*: it copies the sign bit
-in from the left, forever.
+number. On these GCC targets the shift copies the sign bit in from the left.
+Negative signed right shift is implementation-defined in the C versions used here.
 </details>
 
 <details>
@@ -223,8 +223,13 @@ Bug Hunt #2 onward, that difference will bite you deliberately.
 
 ---
 
-## Hand in
+## Reflect on your attempt
 
 `LOGBOOK.md` in this folder, with **at least six rows** — one per defect — plus
 any wrong hypotheses you tried along the way. The wrong ones count. They are the
 evidence that you were reasoning rather than guessing.
+
+## After your attempt
+
+This is ungraded practice; the logbook and reflection prompts are optional.
+Compare your reasoning with the separate [answer guide and corrected source](../../answers/bughunt1/README.md).

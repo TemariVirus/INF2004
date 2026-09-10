@@ -12,7 +12,7 @@
 | **Defects planted** | **8** — 4 logical, 3 Heisenbugs, 1 undefined behaviour |
 | **Runs on** | Pico W + HC020K IR wheel encoder. No laptop shortcut this week. |
 | **Time** | 60–75 minutes |
-| **You must hand in** | `LOGBOOK.md` **and** the disassembly evidence from Task A |
+| **Optional practice notes** | `LOGBOOK.md` **and** the disassembly evidence from Task A |
 
 ---
 
@@ -45,7 +45,7 @@ directories:
 
 ```bash
 mkdir build-debug && cd build-debug
-cmake -DPICO_BOARD=pico_w -DCMAKE_BUILD_TYPE=Debug ..    && make    # -O0
+cmake -DPICO_BOARD=pico_w -DCMAKE_BUILD_TYPE=Debug -DPICO_DEOPTIMIZED_DEBUG=1 .. && make # -O0
 cd ..
 mkdir build-release && cd build-release
 cmake -DPICO_BOARD=pico_w -DCMAKE_BUILD_TYPE=Release ..  && make    # -O3
@@ -88,9 +88,12 @@ condition is false when you arrive it will be false forever, and emitted an
 unconditional jump to itself. Your twenty-slot wait has been compiled into two
 bytes of machine code that can never, under any circumstances, terminate.
 
-Your addresses will differ from these. The shape will not.
+Your addresses will differ. These loop shapes were checked with ARM GCC 13.2.1
+and SDK 1.5.1; inspect your generated code rather than assuming every toolchain
+must emit the same instructions. Copy `pico_sdk_import.cmake` as described in
+the local CMakeLists before configuring. Debug otherwise defaults to `-Og`.
 
-Paste both loops into your logbook. That is the evidence you are handing in.
+Paste both loops into your logbook. Keep this evidence with your practice notes.
 
 > The compiler did not break your code. It read your code, proved that nothing
 > inside that loop could possibly change the variable, and acted on the proof.
@@ -103,7 +106,7 @@ Paste both loops into your logbook. That is the evidence you are handing in.
 
 Not hints. Questions. Turn each one into a written hypothesis before you test it.
 
-**On the shared state (3 defects live here)**
+**On the shared state (2 defects live here)**
 
 - Which variables are written by `encoder_isr` and read by `main`? List them.
   For each one, what stops `main` seeing a half-finished value?
@@ -119,15 +122,16 @@ Not hints. Questions. Turn each one into a written hypothesis before you test it
 - `time_us_32()` returns a 32-bit microsecond counter. How long until it wraps
   back to zero? Work it out — it is not a round number of hours.
 - Consider `now > last + DEBOUNCE` versus `now - last > DEBOUNCE`. They look
-  equivalent. Take `last = 0xFFFFF000`, `DEBOUNCE = 50000`, and `now = 0x00001000`
+  equivalent. Take `last = 0xFFFFF000`, `DEBOUNCE = 50000`, and `now = 0xFFFFF100`
   and evaluate both by hand in 32-bit unsigned arithmetic.
-- **Make it frequent before you fix it.** Do not wait 71 minutes. Seed the
-  variable near the wrap at startup and reproduce the fault in seconds:
+- **Make it frequent before you fix it.** Do not wait 71 minutes. Test both
+  expressions in a host experiment using synthetic timestamps:
   ```c
-  last_debounce_us = 0xFFFFF000u;   /* TEMPORARY - reproduce the wrap */
+  uint32_t last = 0xFFFFF000u, now = 0xFFFFF100u;
+  /* Only 256 us elapsed. Should this edge pass a 50000 us debounce? */
   ```
-  This is the single most useful trick in this hunt, and it generalises: *if a
-  bug is rare because a counter has to reach a certain value, set the counter.*
+  Also test `now = 0x00001000u` after rollover. Setting only the saved timestamp
+  does not move the actual hardware timer near rollover.
 
 **On the state machine (1 defect)**
 
@@ -138,13 +142,13 @@ Not hints. Questions. Turn each one into a written hypothesis before you test it
 
 **On the ISR itself (2 defects)**
 
-- How long does `printf` take at 115200 baud? Compare that to the width of one
+- Measure how long USB `printf` takes in this build. Compare that to the width of one
   encoder slot at a realistic wheel speed. What happens to edges that arrive
   during the `printf`?
 - Remove the `printf` from the ISR — do not fix anything else — and rerun. Does
-  a *different* symptom appear or get worse? Record it. That is not a
-  coincidence, and it is the definition of a Heisenbug: **the instrument was
-  holding the system together.**
+  a *different* symptom appear or get worse? Record what actually happens,
+  including no change. Instrumentation can hide timing defects, but it does
+  not guarantee another defect becomes visible when removed.
 - `DEBOUNCE_US` is 50000. What wheel speed makes a real slot shorter than that?
   Above that speed, what does the driver report, and does it report it as an
   error or as a plausible-looking wrong number? (The second is far worse.)
@@ -163,6 +167,8 @@ Stop printing from the ISR. Do this instead:
 
 ```c
 #define PROBE_PIN 15
+/* In main before enabling the IRQ:
+ * gpio_init(PROBE_PIN); gpio_set_dir(PROBE_PIN, GPIO_OUT); */
 
 void encoder_isr(uint gpio, uint32_t events) {
     gpio_put(PROBE_PIN, 1);        /* ISR entry  - about 2 CPU cycles */
@@ -215,14 +221,19 @@ wheel at speed.
 
 ---
 
-## Hand in
+## Reflect on your attempt
 
 - `LOGBOOK.md`, at least **eight** defect rows plus your hypothesis trail.
 - The two disassembly extracts from Task A, with the differing instruction
   highlighted.
 - In the reflection, answer this:
 
-> You removed the `printf` from the ISR and a different symptom appeared. Explain,
+> Did removing `printf` change another symptom? Explain,
 > in terms of *timing*, why adding an instrument to a system can hide the very
 > fault you were trying to observe — and what that implies about any bug you have
 > ever "fixed" by adding a print statement.
+
+## After your attempt
+
+This is ungraded practice; the logbook and reflection prompts are optional.
+Compare your reasoning with the separate [answer guide and corrected source](../../answers/bughunt3/README.md).

@@ -12,6 +12,7 @@ This repository contains all the labs for the INF2004 module, consolidated into 
 - [LAB 6: OPTIMISATION & DEBUGGING](./LAB6/)
 - [GUIDE: Device Driver Development](./GUIDE_DeviceDriver/)
 - [GUIDE: The Bug Hunts - A Debugging Method](./BUGHUNT.md)
+- [Bug Hunt Answers — use after attempting the exercises](./answers/README.md)
 
 ## Lab Descriptions
 

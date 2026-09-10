@@ -30,6 +30,14 @@ void      acquisition_isr(void);
 void      wait_for_conversion(void);
 uint32_t  checksum_all(const uint8_t *data, uint16_t len);
 
+static int64_t conversion_cb(alarm_id_t id, void *user_data)
+{
+    (void)id;
+    (void)user_data;
+    acquisition_isr();
+    return 0;
+}
+
 int main(void)
 {
     stdio_init_all();
@@ -82,6 +90,12 @@ int main(void)
         char *s = format_reading(&r);
         printf("    \"%s\"   (must be \"t=42 v=7\")\n", s ? s : "(null)");
     }
+
+    printf("[6] wait for an alarm ISR to finish a conversion\n");
+    alarm_id_t alarm = add_alarm_in_ms(10, conversion_cb, NULL, true);
+    if (alarm < 0) panic("Unable to schedule conversion alarm");
+    wait_for_conversion();
+    printf("    conversion complete\n");
 
     printf("\ndone.\n");
 

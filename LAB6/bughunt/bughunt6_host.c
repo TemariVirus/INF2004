@@ -17,6 +17,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <time.h>
+#include <stdlib.h>
 
 typedef struct { uint32_t timestamp; uint16_t value; } reading_t;
 
@@ -43,6 +44,7 @@ int main(void)
 {
     printf("BUG HUNT #6 - telemetry layer\n\n");
 
+    check("crc8 before explicit init", crc8((const uint8_t *)"123456789", 9), 0xF4);
     crc_init();
 
     printf("crc8 - reference vector for CRC-8/ATM\n");
@@ -79,6 +81,11 @@ int main(void)
             printf("  accepted a frame that could not possibly be valid\n");
             failures++;
         }
+        const uint8_t empty[] = { 0xA5, 0, 0 };
+        if (parse_frame(empty, sizeof empty, &r)) {
+            printf("  accepted an empty payload with no timestamp or value\n");
+            failures++;
+        }
     }
 
     printf("\nformat_reading\n");
@@ -94,6 +101,7 @@ int main(void)
         char *s = label_for("temperature");
         printf("  returned: \"%s\"  (expect \"temperature\")\n", s ? s : "(null)");
         if (!s || strcmp(s, "temperature") != 0) failures++;
+        free(s);
     }
 
     printf("\ncalibration_delay - datasheet requires at least 500 us\n");

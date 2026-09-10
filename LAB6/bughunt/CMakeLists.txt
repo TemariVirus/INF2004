@@ -38,7 +38,7 @@ target_compile_options(bughunt6 PRIVATE -Wall -Wextra -Wno-unused-parameter)
 # --------------------------------------------------------------------
 # Configure this project TWICE, into two separate build directories:
 #
-#   cmake -DPICO_BOARD=pico_w -DCMAKE_BUILD_TYPE=Debug   ..   # -O0
+#   cmake -DPICO_BOARD=pico_w -DCMAKE_BUILD_TYPE=Debug -DPICO_DEOPTIMIZED_DEBUG=1 .. # -O0
 #   cmake -DPICO_BOARD=pico_w -DCMAKE_BUILD_TYPE=Release ..   # -O3
 #
 # Several defects in this hunt exist in only one of the two.

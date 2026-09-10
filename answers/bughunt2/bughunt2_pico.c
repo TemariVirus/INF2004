@@ -12,8 +12,7 @@
  * Press the button on GP20 to transmit one reading. Both boards print every
  * frame they send and every frame they receive, as hex.
  *
- * Two of the seven planted defects live in THIS file and cannot be reproduced
- * on your laptop. Fix frame.c first.
+ * Corrected UART reference. Build with the answer's frame.c.
  */
 
 #include <stdio.h>
@@ -36,8 +35,7 @@ static void link_init(void)
     uart_set_format(LINK_UART, 8, 1, UART_PARITY_NONE);
     uart_set_fifo_enabled(LINK_UART, true);
 
-    /* keeps the serial monitor tidy */
-    uart_set_translate_crlf(LINK_UART, true);
+    uart_set_translate_crlf(LINK_UART, false);
 }
 
 static void send_reading(const reading_t *r)
@@ -48,16 +46,28 @@ static void send_reading(const reading_t *r)
     hexdump("tx", frame, n);
 
     for (uint8_t i = 0; i < n; i++)
-        uart_putc(LINK_UART, frame[i]);
+        uart_putc_raw(LINK_UART, frame[i]);
 }
 
 static void rx_poll(void)
 {
     static uint8_t buf[FRAME_MAX];
     static uint8_t n = 0;
+    static uint32_t last_byte_us;
+
+    /* Discard an incomplete frame after an inter-byte gap. At 9600 baud,
+     * a complete 12-byte frame takes about 12.5 ms. */
+    if (n && (uint32_t)(time_us_32() - last_byte_us) > 100000u) n = 0;
 
     while (uart_is_readable(LINK_UART)) {
-        buf[n++] = (uint8_t)uart_getc(LINK_UART);
+        uint8_t byte = (uint8_t)uart_getc(LINK_UART);
+        last_byte_us = time_us_32();
+        if (n == 0 && byte != FRAME_SOF) continue;
+        if (n == 1 && byte != FRAME_PAYLOAD) {
+            n = byte == FRAME_SOF ? 1 : 0;
+            continue;
+        }
+        buf[n++] = byte;
 
         if (n == 2 + FRAME_PAYLOAD + 1) {
             reading_t r;
@@ -71,8 +81,18 @@ static void rx_poll(void)
                        (r.temp_c_x10 < 0 ? -r.temp_c_x10 : r.temp_c_x10) / 10,
                        (r.temp_c_x10 < 0 ? -r.temp_c_x10 : r.temp_c_x10) % 10,
                        (unsigned long)r.timestamp_ms);
-            else
+            else {
                 printf("           BAD FRAME (checksum or header rejected)\n");
+                /* Retain a possible next start already inside the failed
+                 * frame, rather than discarding it with the bad prefix. */
+                uint8_t start = 1;
+                while (start < n && buf[start] != FRAME_SOF) start++;
+                uint8_t remaining = n - start;
+                for (uint8_t i = 0; i < remaining; i++) buf[i] = buf[start + i];
+                n = remaining;
+                if (n >= 2 && buf[1] != FRAME_PAYLOAD) n = 0;
+                continue;
+            }
 
             n = 0;
         }

@@ -6,7 +6,13 @@ include(pico_sdk_import.cmake)
 # FREERTOS_KERNEL_PATH must point at the FreeRTOS-Kernel you downloaded in
 # the main part of Lab 5. Set it in the CMake Tools environment, or pass
 #   cmake -DFREERTOS_KERNEL_PATH=/path/to/FreeRTOS-Kernel ..
-include(${FREERTOS_KERNEL_PATH}/portable/ThirdParty/GCC/RP2040/FreeRTOS_Kernel_import.cmake)
+if (NOT FREERTOS_KERNEL_PATH AND DEFINED ENV{FREERTOS_KERNEL_PATH})
+    set(FREERTOS_KERNEL_PATH "$ENV{FREERTOS_KERNEL_PATH}")
+endif()
+if (NOT FREERTOS_KERNEL_PATH)
+    message(FATAL_ERROR "Set FREERTOS_KERNEL_PATH to your FreeRTOS-Kernel checkout")
+endif()
+include("${FREERTOS_KERNEL_PATH}/portable/ThirdParty/GCC/RP2040/FreeRTOS_Kernel_import.cmake")
 
 project(bughunt5 C CXX ASM)
 
@@ -45,4 +51,3 @@ pico_add_extra_outputs(bughunt5)
 #   planted defect.
 # --------------------------------------------------------------------
 target_compile_options(bughunt5 PRIVATE -Wall -Wextra -Wno-unused-parameter)
-

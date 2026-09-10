@@ -13,7 +13,8 @@
 #ifndef FREERTOS_CONFIG_H
 #define FREERTOS_CONFIG_H
 
-#include "hardware/exception.h"
+/* This header is included before Pico platform macros are available.
+ * Do not include hardware headers here. */
 
 #define configUSE_PREEMPTION                    1
 #define configUSE_TICKLESS_IDLE                 0

@@ -21,8 +21,11 @@
  *   iir_step(ch, x)
  *       First-order exponential filter, one independent state per channel:
  *           y[ch] += (x - y[ch]) / 16
- *       It must converge on x from BOTH directions, and must never
- *       overshoot or wrap.
+ *       Inputs are ADC counts (0..4095). Use signed integer arithmetic;
+ *       division truncates toward zero. It must approach x from BOTH
+ *       directions without overshooting or wrapping. Integer quantisation
+ *       permits a final error of up to 15 ADC counts; exact equality is
+ *       not required. Each channel starts at zero after iir_reset().
  *
  *   pwm_wrap_for_hz(hz, clk_div)
  *       The wrap value that gives a PWM period of exactly 1/hz seconds,

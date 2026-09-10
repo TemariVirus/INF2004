@@ -128,8 +128,8 @@ entirely the bottom two rows.
 
 ## The logbook
 
-Every hunt asks you to keep one. It is the assessed artefact, not the fixed
-code — fixed code is trivial to copy, and reasoning is not.
+These hunts are ungraded practice. A logbook is optional but useful: keep the
+observations and hypotheses you want to discuss or revisit.
 
 | Symptom observed | Hypothesis | Experiment (one change) | Result | Conclusion |
 |---|---|---|---|---|
@@ -142,14 +142,34 @@ what proves you were doing this properly rather than guessing until it compiled.
 
 ## Rules of the hunt
 
-- Each brief tells you **how many defects are planted**. Trust the number — if
-  you have found six of seven, keep going; if you think you have found nine of
-  seven, one of your "fixes" broke something.
+- Each brief tells you **how many defects are planted** as a guide. Compiler
+  versions and platforms may expose additional issues; record evidence rather
+  than rejecting a finding just to match the count.
 - The defect count includes compiler warnings. `-Wall -Wextra` is not optional.
-- You may not consult another group's fixed source. You may absolutely argue
-  with them about a hypothesis.
+- Discuss hypotheses with others. After your own attempt, use the separate
+  [answer guides and reference programs](answers/README.md) to check your work.
 - Getting stuck for twenty minutes is normal and is where the learning is. Getting
   stuck for two hours is not — ask.
+
+---
+
+## Building the Pico exercises
+
+Each `LABn/bughunt` folder is a separate CMake project. Run the host commands
+from that folder. Before the first Pico build, copy `pico_sdk_import.cmake`
+from your SDK's `external` folder into it, as the local CMakeLists requests.
+For example, with `PICO_SDK_PATH` set:
+
+```bash
+cd LAB2/bughunt
+cp "$PICO_SDK_PATH/external/pico_sdk_import.cmake" .
+cmake -S . -B build -DPICO_BOARD=pico_w
+cmake --build build
+```
+
+Flash the generated `.uf2`, not the `.c` file. Hunt #5 additionally needs
+`FREERTOS_KERNEL_PATH`; hunts #3 and #6 specify separate Debug/Release builds.
+The [answer programs](answers/README.md) have their own build instructions.
 
 ---
 

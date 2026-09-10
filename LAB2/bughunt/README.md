@@ -8,7 +8,7 @@
 |---|---|
 | **Algorithm** | Serialisation, framing, checksums |
 | **Defects planted** | **7** — 5 in `frame.c`, 2 in `bughunt2_pico.c` |
-| **Runs on** | Laptop finds 5 of 7. The other 2 need two real Picos. |
+| **Runs on** | Five codec defects can be checked on the laptop; validate the two link defects on two Picos. |
 | **Time** | ~60 minutes |
 
 ---
@@ -112,7 +112,16 @@ work as possible on the laptop first.
 
 ## Step 4 — Onto the hardware
 
-When the host harness prints `CODEC MATCHES THE SPECIFICATION`, flash
+After fixing the valid-frame failures, rerun with both sanitizers:
+
+```bash
+gcc -Wall -Wextra -fsanitize=address,undefined -g -o bughunt2_check bughunt2_host.c frame.c
+./bughunt2_check
+```
+
+The harness now proceeds to malformed inputs. If the decoder is still unsafe,
+this stage can stop in a sanitizer report; that is another defect to investigate.
+When it prints `CODEC MATCHES THE SPECIFICATION` with no sanitizer reports, flash
 `bughunt2_pico.c` to **both** boards, wire them up as described in the file
 header, and press GP20 on one of them.
 
@@ -164,12 +173,9 @@ Compare the number of payload bytes the loop writes against the number the lengt
 byte promises. Then check whether the checksum covers exactly the bytes the
 specification says it covers.
 
-**Make the fix permanent.** Add this next to the struct so nobody can reintroduce
-the padding defect:
-```c
-#include <assert.h>
-static_assert(sizeof(reading_t) == 12, "layout changed - check frame_encode");
-```
+**Make the fix permanent.** Keep the golden-byte tests. An assertion about the
+in-memory struct size does not prove that the wire bytes match the protocol;
+explicit serialization should work regardless of that size.
 </details>
 
 <details>
@@ -179,9 +185,9 @@ One is the sanitiser finding from Step 3. Fixing it is a matter of making the
 promotion explicit rather than accidental — cast to the type you actually want
 *before* you shift, not after you have already lost the value.
 
-The other is a security defect, and the harness will not find it because the
-harness only ever sends well-formed frames. Look at where the length byte comes
-from, and where it is used:
+The other is a security defect. Once the valid-frame tests pass, the harness
+also sends malformed frames. Look at where the length byte comes from and
+where it is used:
 
 ```c
 len = in[1];                              /* attacker-controlled */
@@ -195,8 +201,8 @@ it lives on the stack, next to your return address.
 
 **Never trust a length that came from outside your program.** Validate it against
 both your buffer size and the number of bytes you actually received, before you
-use it as a loop bound. Try feeding the decoder a frame with `len = 200` and see
-what happens.
+use it as a loop bound. Also check that the length is the one required by this
+protocol. Run hostile-input experiments under AddressSanitizer.
 </details>
 
 <details>
@@ -222,8 +228,8 @@ frame from then on is a mixture of two real frames.
 
 A real receiver is a small state machine: *hunt for `0xAA`* → *read the length* →
 *read that many payload bytes* → *check the checksum* → back to hunting. If any
-step fails, it goes back to hunting rather than blindly continuing. You will
-build exactly this state machine properly in Bug Hunt #3.
+step fails, it goes back to hunting rather than blindly continuing. Bug Hunt #3
+uses the same state-machine reasoning for encoder edges, not UART frames.
 </details>
 
 ---
@@ -243,10 +249,15 @@ Use `uint8_t` for bytes. Always.
 
 ---
 
-## Hints
+## Reflect on your attempt
 
-`LOGBOOK.md`, at least **seven** defect rows plus your hypothesis trail. In the
+Optionally use `LOGBOOK.md` for the **seven** intended defects and your hypothesis trail. In the
 reflection section, answer this one specifically:
 
 > Two of the four symptoms you listed in Step 2 had the same root cause. Which
 > two, and what made you realise they were not independent?
+
+## After your attempt
+
+This is ungraded practice; the logbook and reflection prompts are optional.
+Compare your reasoning with the separate [answer guide and corrected source](../../answers/bughunt2/README.md).
